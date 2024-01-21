@@ -52,6 +52,18 @@ static void did_set_selection_callback(struct copy_action *copy_action) {
     }
 
     if (!options.stay_in_foreground) {
+        if (chdir("/") < 0) {
+            perror("chdir /");
+        }
+        signal(SIGHUP, SIG_IGN);
+        pid_t pid = fork();
+        if (pid < 0) {
+            perror("fork");
+            /* Proceed without forking */
+        }
+        if (pid > 0) {
+            exit(0);
+        }
         /* Move to background.
          * We fork our process and leave the
          * child running in the background,
@@ -64,8 +76,9 @@ static void did_set_selection_callback(struct copy_action *copy_action) {
          */
         int devnull = open("/dev/null", O_RDWR);
         if (devnull >= 0) {
-            dup2(devnull, STDOUT_FILENO);
             dup2(devnull, STDIN_FILENO);
+            dup2(devnull, STDOUT_FILENO);
+            dup2(devnull, STDERR_FILENO);
             close(devnull);
         } else {
             /* If we cannot open /dev/null,
@@ -73,18 +86,7 @@ static void did_set_selection_callback(struct copy_action *copy_action) {
              */
             close(STDIN_FILENO);
             close(STDOUT_FILENO);
-        }
-        if (chdir("/") < 0) {
-            perror("chdir /");
-        }
-        signal(SIGHUP, SIG_IGN);
-        pid_t pid = fork();
-        if (pid < 0) {
-            perror("fork");
-            /* Proceed without forking */
-        }
-        if (pid > 0) {
-            exit(0);
+            close(STDERR_FILENO);
         }
     }
 }
